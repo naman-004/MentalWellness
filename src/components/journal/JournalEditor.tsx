@@ -5,7 +5,7 @@ import { JOURNAL_TAGS } from '../../utils/constants'
 import { clsx } from 'clsx'
 
 interface JournalEditorProps {
-  onSubmit: (data: { text: string; moodScore: number; studyHours: number; tags: string[] }) => Promise<any>
+  onSubmit: (data: { text: string; moodScore: number; studyHours: number; tags: string[] }) => Promise<unknown>
   draftText: string
   setDraftText: (val: string) => void
   clearDraft: () => void

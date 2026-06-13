@@ -141,7 +141,7 @@ export default function MindfulnessCard({
           </div>
 
           {isBreathingType ? (
-            <BreathingCircle type={activeExercise.id as any} onComplete={handleCompleteSession} />
+            <BreathingCircle type={activeExercise.id as 'breathing_478' | 'box_breathing'} onComplete={handleCompleteSession} />
           ) : (
             // Static Step-by-Step guides
             <div className="space-y-6 min-h-[160px] flex flex-col justify-between">

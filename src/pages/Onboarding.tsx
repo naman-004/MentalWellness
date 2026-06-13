@@ -34,6 +34,7 @@ interface OnboardingState {
 type Action =
   | { type: 'NEXT_STEP' }
   | { type: 'PREV_STEP' }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   | { type: 'SET_FIELD'; field: keyof OnboardingState; value: any }
 
 const initialState: OnboardingState = {
@@ -91,6 +92,7 @@ export default function Onboarding() {
     'General Focus & Concentration',
   ]
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFieldChange = (field: keyof OnboardingState, value: any) => {
     dispatch({ type: 'SET_FIELD', field, value })
   }

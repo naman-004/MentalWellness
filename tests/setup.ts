@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom'
-import { vi } from 'vitest'
+
 
 // Mock browser APIs if needed (e.g., crypto.randomUUID)
 if (!global.crypto) {

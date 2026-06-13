@@ -16,6 +16,7 @@ export interface CreateEntryInput {
 }
 
 // Custom debounce callback hook to save draft edits
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function useDebouncedCallback<T extends (...args: any[]) => any>(callback: T, delay: number) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const callbackRef = useRef(callback)

@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent } from 'react'
+import { useState, useRef, KeyboardEvent, ComponentType } from 'react'
 import { useInsights } from '../hooks/useInsights'
 import MoodTrendChart from '../components/insights/MoodTrendChart'
 import TriggerChart from '../components/insights/TriggerChart'
@@ -28,7 +28,7 @@ export default function Insights() {
     progress: null,
   })
 
-  const tabs: { id: TabId; label: string; icon: any }[] = [
+  const tabs: { id: TabId; label: string; icon: ComponentType<{ size?: number | string }> }[] = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'stress', label: 'Stress Analysis', icon: BrainCircuit },
     { id: 'mood', label: 'Mood Patterns', icon: TrendingUp },
@@ -80,7 +80,7 @@ export default function Insights() {
         <div className="flex gap-2 items-center">
           <span className="text-xs text-text-secondary">Overall Status:</span>
           {moodLevel.color !== 'default' ? (
-            <Badge variant={moodLevel.color as any} className="font-semibold px-3 py-1">
+            <Badge variant={moodLevel.color as 'low' | 'medium' | 'high' | 'critical' | 'info' | 'zen'} className="font-semibold px-3 py-1">
               {moodLevel.label} ({stats.avgMood}/10)
             </Badge>
           ) : (

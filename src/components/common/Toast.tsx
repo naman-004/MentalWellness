@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createPortal } from 'react-dom'
 import { create } from 'zustand'
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react'

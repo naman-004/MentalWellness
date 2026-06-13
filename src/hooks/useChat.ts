@@ -39,7 +39,7 @@ export function computeRecentJournalSummary(entries: JournalEntry[], moodLogs: M
   }
 
   // 3. Top Themes
-  const themeCounts: Record<KeyTheme, number> = {} as any
+  const themeCounts = {} as Record<KeyTheme, number>
   active.forEach((e) => {
     if (e.aiAnalysis?.keyThemes) {
       e.aiAnalysis.keyThemes.forEach((t) => {
