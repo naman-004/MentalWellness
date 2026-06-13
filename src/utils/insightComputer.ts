@@ -1,11 +1,33 @@
+/**
+ * @module insightComputer
+ * @description Analytics engine for computing mood averages, stress triggers,
+ * trend directions, positive patterns, stress heatmaps, and summary statistics
+ * from journal entries.
+ */
+
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { JournalEntry } from '../types/journal'
 import { UserProfile } from '../types/user'
 import { computeCurrentStreak } from './streakHelpers'
 import { daysFromNow } from './dateHelpers'
 
+/** Threshold for mood trend detection — a difference above this is 'improving' or 'declining'. */
+const TREND_THRESHOLD = 0.5
+
+/** Number of weeks displayed in the stress heatmap. */
+const HEATMAP_WEEKS = 3
+
+/** Number of days in the recent window for trend comparison. */
+const TREND_WINDOW_DAYS = 7
+
+/** Number of days in the recent window for summary stats. */
+const RECENT_DAYS = 30
+
 /**
- * Calculates the overall average mood score of active entries.
+ * Calculates the overall average mood score of active (non-deleted) entries.
+ *
+ * @param entries - The full list of journal entries (including soft-deleted)
+ * @returns The average mood score rounded to 1 decimal place, or 0 if no active entries
  */
 export function computeMoodAverage(entries: JournalEntry[]): number {
   const activeEntries = entries.filter((e) => e.deletedAt === null)
@@ -15,7 +37,11 @@ export function computeMoodAverage(entries: JournalEntry[]): number {
 }
 
 /**
- * Aggregates stress triggers from AI analysis and returns them sorted by count descending.
+ * Aggregates stress triggers from AI analysis across all active entries
+ * and returns them sorted by frequency in descending order.
+ *
+ * @param entries - The full list of journal entries
+ * @returns Array of trigger objects with `name` (capitalized) and `value` (count), sorted descending
  */
 export function aggregateTriggers(entries: JournalEntry[]): { name: string; value: number }[] {
   const activeEntries = entries.filter((e) => e.deletedAt === null)
@@ -41,6 +67,11 @@ export function aggregateTriggers(entries: JournalEntry[]): { name: string; valu
 
 /**
  * Evaluates mood trend direction by comparing the last 7 days against the prior 7 days.
+ * Falls back to splitting all entries in half if either period has no data.
+ *
+ * @param entries - The full list of journal entries
+ * @returns `'improving'` if recent average exceeds prior by more than {@link TREND_THRESHOLD},
+ *          `'declining'` if lower by the same margin, or `'stable'` otherwise
  */
 export function evaluateTrendDirection(entries: JournalEntry[]): 'improving' | 'declining' | 'stable' {
   const activeEntries = entries.filter((e) => e.deletedAt === null)
@@ -49,12 +80,12 @@ export function evaluateTrendDirection(entries: JournalEntry[]): 'improving' | '
   const now = new Date()
   const recentEntries = activeEntries.filter((e) => {
     const diff = differenceInCalendarDays(now, parseISO(e.createdAt))
-    return diff >= 0 && diff < 7
+    return diff >= 0 && diff < TREND_WINDOW_DAYS
   })
 
   const priorEntries = activeEntries.filter((e) => {
     const diff = differenceInCalendarDays(now, parseISO(e.createdAt))
-    return diff >= 7 && diff < 14
+    return diff >= TREND_WINDOW_DAYS && diff < TREND_WINDOW_DAYS * 2
   })
 
   let recentAvg = 0
@@ -80,13 +111,16 @@ export function evaluateTrendDirection(entries: JournalEntry[]): 'improving' | '
   }
 
   const diff = recentAvg - priorAvg
-  if (diff > 0.5) return 'improving'
-  if (diff < -0.5) return 'declining'
+  if (diff > TREND_THRESHOLD) return 'improving'
+  if (diff < -TREND_THRESHOLD) return 'declining'
   return 'stable'
 }
 
 /**
- * Discovers and extracts unique positive signals from AI analysis.
+ * Discovers and extracts unique positive signals from AI analysis across all active entries.
+ *
+ * @param entries - The full list of journal entries
+ * @returns Deduplicated array of positive signal strings
  */
 export function discoverPositivePatterns(entries: JournalEntry[]): string[] {
   const activeEntries = entries.filter((e) => e.deletedAt === null)
@@ -114,15 +148,25 @@ export interface HeatmapCell {
 }
 
 /**
- * Computes a 7x3 grid mapping weekday (Mon-Sun) vs daily stress levels over the last 3 weeks.
+ * Computes a 7×{@link HEATMAP_WEEKS} grid mapping weekday (Mon-Sun) vs daily stress levels.
+ *
+ * Each cell contains the average stress intensity value:
+ * - 0 = no data
+ * - 1 = low
+ * - 2 = medium
+ * - 3 = high
+ * - 4 = critical
+ *
+ * @param entries - The full list of journal entries
+ * @returns Array of 21 HeatmapCell objects (7 weekdays × 3 weeks)
  */
 export function computeStressHeatmap(entries: JournalEntry[]): HeatmapCell[] {
   const activeEntries = entries.filter((e) => e.deletedAt === null)
   const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const cells: HeatmapCell[] = []
 
-  // Initialize the 21 grid cells (7 weekdays x 3 weeks)
-  for (let w = 0; w < 3; w++) {
+  // Initialize the grid cells (7 weekdays × HEATMAP_WEEKS weeks)
+  for (let w = 0; w < HEATMAP_WEEKS; w++) {
     for (let d = 0; d < 7; d++) {
       cells.push({
         weekday: weekdays[d],
@@ -138,8 +182,8 @@ export function computeStressHeatmap(entries: JournalEntry[]): HeatmapCell[] {
     const entryDate = parseISO(entry.createdAt)
     const diffDays = differenceInCalendarDays(now, entryDate)
     
-    // We only map the last 21 days (3 weeks)
-    if (diffDays >= 0 && diffDays < 21) {
+    // We only map the last HEATMAP_WEEKS * 7 days
+    if (diffDays >= 0 && diffDays < HEATMAP_WEEKS * 7) {
       const weekIndex = Math.floor(diffDays / 7)
       const rawDay = entryDate.getDay() // 0 = Sun, 1 = Mon, ...
       const weekdayIndex = rawDay === 0 ? 6 : rawDay - 1 // map to Mon=0, ..., Sun=6
@@ -179,7 +223,14 @@ export interface SummaryStats {
 }
 
 /**
- * Computes all summary metrics needed for stats cards.
+ * Computes all summary statistics needed for dashboard stats cards.
+ *
+ * Uses the last {@link RECENT_DAYS} days of entries for mood and study hour averages.
+ * Falls back to all entries if no recent data exists.
+ *
+ * @param entries - The full list of journal entries
+ * @param profile - The user's profile (for exam date and stress baseline)
+ * @returns A {@link SummaryStats} object with computed metrics
  */
 export function computeSummaryStats(
   entries: JournalEntry[],
@@ -191,7 +242,7 @@ export function computeSummaryStats(
   const now = new Date()
   const last30DaysEntries = activeEntries.filter((e) => {
     const diff = differenceInCalendarDays(now, parseISO(e.createdAt))
-    return diff >= 0 && diff < 30
+    return diff >= 0 && diff < RECENT_DAYS
   })
 
   const moodEntriesToUse = last30DaysEntries.length > 0 ? last30DaysEntries : activeEntries

@@ -1,4 +1,7 @@
 /**
+ * @module geminiClient
+ * @description Core Google Gemini API client for ZenPath.
+ *
  * SECURITY NOTE: This uses the Gemini API directly from the browser.
  * The API key is stored in the user's localStorage.
  * Acceptable for a personal-use app (each user provides their own key).
@@ -8,17 +11,36 @@
 import { GoogleGenAI } from '@google/genai'
 import { checkRateLimit } from '../utils/rateLimiter'
 
-// Model to use across all features
-// gemini-2.5-flash: free tier, 10 RPM, 250 RPD, no credit card
+/**
+ * The Gemini model used across all features.
+ * gemini-2.5-flash: free tier, 10 RPM, 250 RPD, no credit card required.
+ */
 export const GEMINI_MODEL = 'gemini-2.5-flash'
 
+/**
+ * Creates a new GoogleGenAI client instance.
+ *
+ * @param apiKey - The user's Gemini API key
+ * @returns A configured GoogleGenAI client instance
+ * @throws {Error} If apiKey is empty
+ */
 export function getGeminiClient(apiKey: string): GoogleGenAI {
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error('API key is required to create a Gemini client.')
+  }
   return new GoogleGenAI({ apiKey })
 }
 
 /**
- * Single non-streaming call — returns full text response.
+ * Makes a single non-streaming call to Gemini and returns the full text response.
  * Used for: journal analysis, weekly summary.
+ *
+ * @param apiKey - The user's Gemini API key
+ * @param systemInstruction - The system prompt for the model
+ * @param userMessage - The user's message to analyze
+ * @param maxOutputTokens - Maximum output tokens (default: 1000)
+ * @returns The full text response from Gemini
+ * @throws {Error} If apiKey or userMessage is empty, or if the response is empty
  */
 export async function callGemini(
   apiKey: string,
@@ -26,6 +48,9 @@ export async function callGemini(
   userMessage: string,
   maxOutputTokens = 1000
 ): Promise<string> {
+  if (!userMessage || !userMessage.trim()) {
+    throw new Error('User message cannot be empty.')
+  }
   checkRateLimit()
   const ai = getGeminiClient(apiKey)
   const response = await ai.models.generateContent({
@@ -43,8 +68,13 @@ export async function callGemini(
 }
 
 /**
- * Streaming call — yields text chunks as they arrive.
+ * Makes a streaming call to Gemini, yielding text chunks as they arrive.
  * Used for: chat companion (typewriter effect).
+ *
+ * @param apiKey - The user's Gemini API key
+ * @param systemInstruction - The system prompt for the model
+ * @param contents - Array of conversation messages in Gemini format
+ * @yields Text chunks as they arrive from the stream
  */
 export async function* streamGemini(
   apiKey: string,
@@ -69,8 +99,11 @@ export async function* streamGemini(
 }
 
 /**
- * Test if an API key is valid — call with minimal tokens.
- * Returns true if key works, false if invalid/quota exceeded.
+ * Tests if an API key is valid by making a minimal API call.
+ * Returns `true` if the key works, `false` if invalid or quota exceeded.
+ *
+ * @param apiKey - The API key to test
+ * @returns `true` if the key is valid, `false` otherwise
  */
 export async function testGeminiKey(apiKey: string): Promise<boolean> {
   // We call checkRateLimit here too

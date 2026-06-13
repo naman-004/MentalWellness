@@ -1,7 +1,20 @@
+/**
+ * @module chatStore
+ * @description Zustand store for managing chat conversations with Zen (the AI companion).
+ * Persisted to localStorage under the `zenpath-chat` namespace.
+ */
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Conversation, ChatMessage } from '../types/chat'
 
+/**
+ * Maximum number of conversations to retain in localStorage.
+ * Prevents unbounded growth of the persistent store.
+ */
+export const MAX_CONVERSATIONS = 50
+
+/** Zustand state interface for chat conversation management. */
 interface ChatState {
   conversations: Conversation[]
   activeConversationId: string | null
@@ -28,7 +41,7 @@ export const useChatStore = create<ChatState>()(
           lastMessageAt: now,
         }
         set((state) => ({
-          conversations: [newConversation, ...state.conversations],
+          conversations: [newConversation, ...state.conversations].slice(0, MAX_CONVERSATIONS),
           activeConversationId: id,
         }))
         return id

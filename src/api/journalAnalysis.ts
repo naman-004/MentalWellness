@@ -1,10 +1,26 @@
+/**
+ * @module journalAnalysis
+ * @description Journal entry analysis API layer for ZenPath.
+ * Sends journal entries to Gemini for CBT-based stress and sentiment analysis.
+ */
+
 import { callGemini } from './geminiClient'
 import { checkRateLimit } from '../utils/rateLimiter'
 import { JOURNAL_ANALYSIS_SYSTEM_PROMPT } from '../utils/promptTemplates'
 import { parseAnalysisResponse } from '../utils/responseParser'
+import { sanitizeText } from '../utils/sanitize'
 import type { AIAnalysis } from '../types/journal'
 import type { ExamType } from '../types/user'
 
+/**
+ * Analyzes a journal entry using Google Gemini and returns structured AI analysis.
+ *
+ * @param apiKey - The user's Gemini API key
+ * @param entryText - The raw journal entry text to analyze
+ * @param userContext - Contextual information about the student
+ * @returns A validated {@link AIAnalysis} object with stress triggers, sentiment, and themes
+ * @throws {Error} If entryText is empty
+ */
 export async function analyzeJournalEntry(
   apiKey: string,
   entryText: string,
@@ -15,6 +31,12 @@ export async function analyzeJournalEntry(
     stressBaseline: number
   }
 ): Promise<AIAnalysis> {
+  // Validate and sanitize input
+  if (!entryText || !entryText.trim()) {
+    throw new Error('Journal entry text cannot be empty.')
+  }
+  const sanitizedText = sanitizeText(entryText)
+
   // checkRateLimit() must be the FIRST line inside analyzeJournalEntry
   checkRateLimit()
 
@@ -26,7 +48,7 @@ export async function analyzeJournalEntry(
     - Stress baseline: ${userContext.stressBaseline}/10
     
     Journal entry to analyze:
-    "${entryText}"
+    "${sanitizedText}"
   `.trim()
 
   const raw = await callGemini(

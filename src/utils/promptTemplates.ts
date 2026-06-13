@@ -1,9 +1,16 @@
+/**
+ * @module promptTemplates
+ * @description System instruction templates for Google Gemini API calls.
+ * Includes prompts for journal analysis, chat companion, and weekly summaries.
+ */
+
 import { UserProfile } from '../types/user'
 import { KeyTheme } from '../types/journal'
 import { daysFromNow } from './dateHelpers'
 
 /**
  * System instruction prompt for Gemini analyzing student journal entries.
+ * Instructs the model to return structured JSON matching the {@link AIAnalysis} schema.
  */
 export const JOURNAL_ANALYSIS_SYSTEM_PROMPT = `
 You are an expert mental health analyst specializing in academic stress among Indian students
@@ -40,8 +47,13 @@ peer comparison, and identity deeply tied to exam outcomes. Be perceptive and co
 `
 
 /**
- * Dynamic system prompt builder for the conversational companion.
- * Injects user exam target and anxiety indicators to personalize the chat agent.
+ * Builds a dynamic system prompt for the conversational chat companion.
+ * Injects user-specific context (exam target, mood trends, streak) to personalize responses.
+ *
+ * @param profile - The user's profile with exam details
+ * @param recentSummary - Aggregated recent wellness metrics
+ * @param currentStreak - The current journaling streak count
+ * @returns A personalized system instruction string for Gemini
  */
 export function buildChatSystemPrompt(
   profile: UserProfile,
@@ -100,6 +112,7 @@ YOU ARE NOT:
 
 /**
  * System prompt template for generating weekly wellness summaries.
+ * Instructs the model to synthesize mood trends, triggers, and suggest interventions.
  */
 export const WEEKLY_SUMMARY_SYSTEM_PROMPT = `
 You are ZenPath AI, a developmental mental coach.

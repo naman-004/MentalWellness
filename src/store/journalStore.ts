@@ -1,7 +1,20 @@
+/**
+ * @module journalStore
+ * @description Zustand store for managing journal entries with soft-delete support.
+ * Persisted to localStorage under the `zenpath-journal` namespace.
+ */
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { JournalEntry, AIAnalysis } from '../types/journal'
 
+/**
+ * Maximum number of journal entries to retain in localStorage.
+ * Prevents unbounded growth of the persistent store.
+ */
+export const MAX_JOURNAL_ENTRIES = 500
+
+/** Zustand state interface for journal entry management. */
 interface JournalState {
   entries: JournalEntry[]
   addEntry: (entry: JournalEntry) => void
@@ -19,7 +32,9 @@ export const useJournalStore = create<JournalState>()(
         set((state) => {
           // Security requirement: NEVER console.log journal text — log only entry IDs
           console.log(`[JournalStore] Adding entry with ID: ${entry.id}`)
-          return { entries: [entry, ...state.entries] }
+          const newEntries = [entry, ...state.entries]
+          // Enforce entry count limit to prevent unbounded localStorage growth
+          return { entries: newEntries.slice(0, MAX_JOURNAL_ENTRIES) }
         }),
       updateEntry: (id, updates) =>
         set((state) => {

@@ -1,8 +1,16 @@
+/**
+ * @module weeklySummary
+ * @description Weekly wellness reflection generator for ZenPath.
+ * Generates AI-powered weekly summaries with 24-hour localStorage caching.
+ */
+
 import { callGemini } from './geminiClient'
 import { checkRateLimit } from '../utils/rateLimiter'
 import { WEEKLY_SUMMARY_SYSTEM_PROMPT } from '../utils/promptTemplates'
+import { sanitizeText } from '../utils/sanitize'
 import type { UserProfile } from '../types/user'
 
+/** Shape of the cached weekly summary stored in localStorage. */
 export interface WeeklySummaryCache {
   summary: string
   timestamp: number
@@ -11,6 +19,13 @@ export interface WeeklySummaryCache {
 /**
  * Generates a weekly reflection letter using Google Gemini.
  * Employs a local storage cache to keep calls to at most once per 24 hours.
+ *
+ * @param apiKey - The user's Gemini API key
+ * @param profile - The user's profile with name and exam details
+ * @param weekMetrics - Aggregated wellness metrics for the past week
+ * @param forceRefresh - If `true`, bypasses the cache and generates a new summary
+ * @returns An object containing the summary text and the cache timestamp
+ * @throws {WeeklySummaryFallbackError} If the API call fails but a cached version exists
  */
 export async function generateWeeklySummary(
   apiKey: string,
@@ -44,8 +59,9 @@ export async function generateWeeklySummary(
     // checkRateLimit() must be called
     checkRateLimit()
 
+    const safeName = sanitizeText(profile.name, 200)
     const userMessage = `
-      Student: ${profile.name}, preparing for ${profile.examType}
+      Student: ${safeName}, preparing for ${profile.examType}
       Days to exam: ${weekMetrics.daysToExam}
       This week's mood average: ${weekMetrics.avgMood}/10
       Top stress themes this week: ${weekMetrics.topTriggers.join(', ')}
@@ -85,6 +101,13 @@ export async function generateWeeklySummary(
   }
 }
 
+/**
+ * Custom error thrown when a weekly summary API call fails but a cached version exists.
+ * Allows the UI to display the stale cache with a warning message.
+ *
+ * @property {string} cachedSummary - The cached summary text to display
+ * @property {number} cachedAt - Timestamp when the cache was written
+ */
 export class WeeklySummaryFallbackError extends Error {
   constructor(message: string, public cachedSummary: string, public cachedAt: number) {
     super(message)

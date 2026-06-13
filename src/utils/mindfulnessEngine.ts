@@ -1,5 +1,14 @@
+/**
+ * @module mindfulnessEngine
+ * @description Adaptive mindfulness exercise selection engine for ZenPath.
+ *
+ * Evaluates the student's current mood, exam proximity, and stress themes
+ * to recommend the most appropriate mindfulness exercise.
+ */
+
 import { ExerciseType, MindfulnessExercise } from '../types/wellness'
 
+/** Database of all available mindfulness exercises, keyed by exercise type. */
 export const EXERCISES_DATABASE: Record<ExerciseType, Omit<MindfulnessExercise, 'reasonForSelection'>> = {
   breathing_478: {
     id: 'breathing_478',
@@ -80,7 +89,21 @@ export const EXERCISES_DATABASE: Record<ExerciseType, Omit<MindfulnessExercise, 
 }
 
 /**
- * Adaptive engine that selects the best suited mindfulness exercise based on the student's current state.
+ * Adaptive engine that selects the best-suited mindfulness exercise based on the student's current state.
+ *
+ * Selection priority (evaluated in order):
+ * 1. **High distress** (mood < 4.5): 4-7-8 Breathing
+ * 2. **Exam proximity** (< 15 days): 5-4-3-2-1 Grounding
+ * 3. **Heavy workload** (UPSC/GATE/CAT or syllabus worries): Pomodoro Reset
+ * 4. **Social pressure** (peer/family worries): Gratitude Reframe
+ * 5. **Moderate stress** (mood 4.5–7.0): Box Breathing
+ * 6. **Doing well** (mood ≥ 7.0): Affirmation
+ *
+ * @param avgMood - The student's average mood score (1–10)
+ * @param examType - The type of exam being prepared for
+ * @param daysToExam - Number of days until the exam
+ * @param topWorries - Array of the student's top worry strings
+ * @returns The selected {@link MindfulnessExercise} with a personalized reason
  */
 export function selectExercise(
   avgMood: number,
@@ -124,4 +147,24 @@ export function selectExercise(
     ...baseExercise,
     reasonForSelection: reason
   }
+}
+
+/**
+ * Safely retrieves an exercise by its ID from the database.
+ * Returns `null` if the exercise ID is not found.
+ *
+ * @param id - The exercise type identifier to look up
+ * @returns The exercise data (without reasonForSelection), or `null` if not found
+ *
+ * @example
+ * ```ts
+ * const ex = getExerciseById('breathing_478')
+ * console.log(ex?.name)  // '4-7-8 Breathing Calm'
+ *
+ * const missing = getExerciseById('unknown' as ExerciseType)
+ * console.log(missing)   // null
+ * ```
+ */
+export function getExerciseById(id: ExerciseType): Omit<MindfulnessExercise, 'reasonForSelection'> | null {
+  return EXERCISES_DATABASE[id] ?? null
 }
